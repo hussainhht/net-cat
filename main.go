@@ -1,62 +1,31 @@
 package main
 
 import (
-	"bufio"
-	"fmt"
-	"io"
-	"net"
-	"os"
+    "fmt"
+    "net"
+    "os"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run main.go <port>")
-		os.Exit(1)
-	}
+    
+    listener, err := net.Listen("tcp", ":8989")
+    if err != nil {
+        fmt.Println("Error starting server:", err)
+        os.Exit(1)
+    }
+    defer listener.Close()
 
-	port := fmt.Sprintf(":%s", os.Args[1])
+    fmt.Println("Server listening on port 8989")
 
-	listener, err := net.Listen("tcp", port)
-	if err != nil {
-		fmt.Println("Failed to create listener, err:", err)
-		os.Exit(1)
-	}
-	defer listener.Close()
-	
-	fmt.Printf("Listening on %s\n", listener.Addr()) 
+    // waiting for clients
+    for {
+        conn, err := listener.Accept()
+        if err != nil {
+            fmt.Println("Error accepting client:", err)
+            continue
+        }
 
-	for {
-		conn, err := listener.Accept()
-		if err != nil {
-			fmt.Println("Failed to accept connection, err:", err)
-			continue
-		}
-		go handleConnection(conn) 
-	}
-}
-
-func handleConnection(conn net.Conn) {
-	defer conn.Close()
-
-	reader := bufio.NewReader(conn)
-	for {
-		bytes, err := reader.ReadBytes('\n')
-		if err != nil {
-			if err != io.EOF {
-				fmt.Println("Failed to read data, err:", err)
-			}
-			return
-		}
-
-		fmt.Printf("Request: %s", bytes)
-
-		line := fmt.Sprintf("Echo %s", bytes)
-		fmt.Printf("Response: %s", line) 
-
-		_, err = conn.Write([]byte(line))
-		if err != nil {
-			fmt.Println("Failed to write data, err:", err)
-			return
-		}
-	}
+        fmt.Println("Client connected:", conn.RemoteAddr())
+        conn.Close() // closing it for now 
+    }
 }
