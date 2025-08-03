@@ -1,0 +1,1 @@
+conn.Write([]byte("Hello!\n")) ======= fmt.Fprint(conn, "Hello!\n")

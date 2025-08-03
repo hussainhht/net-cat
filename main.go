@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"sync"
 
 	"netcat/handlers"
 )
+
+var clients = make(map[string]net.Conn)
+var clientsMutex = &sync.Mutex{}
 
 func main() {
 	Args := os.Args
@@ -35,9 +39,6 @@ func main() {
 			fmt.Println("Error accepting client:", err)
 			continue
 		}
-		go handlers.HandleClient(conn)
+		go handlers.HandleClient(conn, &clients, clientsMutex)
 	}
 }
-
-
-

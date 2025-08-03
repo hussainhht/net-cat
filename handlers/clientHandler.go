@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"strings"
+	"sync"
 	// "time"
 )
 
@@ -24,9 +25,9 @@ var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
 	" |    `.       | `' \\Zq\n" +
 	"_)      \\.___.,|     .'\n" +
 	"\\____   )MMMMMP|   .'\n" +
-	"     `-'       `--'\n\n" 
+	"     `-'       `--'\n\n"
 
-func HandleClient(conn net.Conn) error {
+func HandleClient(conn net.Conn, clients *map[string]net.Conn, clientsMutex *sync.Mutex) error {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 	username, usernameError := requireName(reader, conn)
@@ -34,6 +35,7 @@ func HandleClient(conn net.Conn) error {
 		fmt.Println(usernameError)
 		return usernameError
 	}
+	addClient(clientsMutex, clients, username, conn)
 	fmt.Println("Connection Established from username: " + username)
 	return nil
 }
@@ -41,11 +43,24 @@ func HandleClient(conn net.Conn) error {
 func requireName(reader *bufio.Reader, conn net.Conn) (string, error) {
 	conn.Write([]byte(ConnectionMessage))
 	conn.Write([]byte("Enter Username:"))
-	name, err := reader.ReadString('\n')
+	username, err := reader.ReadString('\n')
 	if err != nil {
 		fmt.Println("couldnt read name")
 		return "", err
 	}
-	name = strings.TrimSpace(name)
-	return name, nil
+	username = strings.TrimSpace(username)
+	return username, nil
+}
+
+func addClient(clientsMutex *sync.Mutex, clients *map[string]net.Conn, username string, conn net.Conn) {
+	clientsMutex.Lock()
+	if _, exists := (*clients)[username]; exists {
+		clientsMutex.Unlock()
+		fmt.Fprint(conn, "Name already taken.\n")
+		conn.Close()
+		return
+	}
+	(*clients)[username] = conn
+	clientsMutex.Unlock()
+	fmt.Println("unlocked")
 }
