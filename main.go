@@ -7,8 +7,15 @@ import (
 )
 
 func main() {
-    
-    listener, err := net.Listen("tcp", ":8989")
+
+	if len(os.Args) < 2 {
+		fmt.Println("Usage: go run main.go <port>")
+		os.Exit(1)
+	}
+
+	port := fmt.Sprintf(":%s", os.Args[1])
+
+    listener, err := net.Listen("tcp", port)
     if err != nil {
         fmt.Println("Error starting server:", err)
         os.Exit(1)
@@ -29,3 +36,4 @@ func main() {
         conn.Close() // closing it for now 
     }
 }
+
