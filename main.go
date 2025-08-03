@@ -22,6 +22,7 @@ func main() {
 		os.Exit(1)
 	}
 	defer listener.Close()
+	
 	fmt.Printf("Listening on %s\n", listener.Addr()) 
 
 	for {
