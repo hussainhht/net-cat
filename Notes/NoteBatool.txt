@@ -1,0 +1,15 @@
+
+what is net.Listen function??
+
+net.Listen() is a function in Go’s standard net package that sets up a server socket, 
+your program to accept incoming connections.
+
+func Listen(network, address string) (net.Listener, error)
+
+- net.Listener	An interface for something that can accept incoming connections
+- .Accept()	Waits for a new client to connect (returns net.Conn)
+- .Close()	Closes the socket
+- .Addr()	Tells you which IP:port the server is running on
+
+-------------------------------------------------------------------------------------------------
+
