@@ -6,7 +6,6 @@ import (
 	"net"
 	"strings"
 	"sync"
-	// "time"
 )
 
 var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
@@ -62,5 +61,4 @@ func addClient(clientsMutex *sync.Mutex, clients *map[string]net.Conn, username 
 	}
 	(*clients)[username] = conn
 	clientsMutex.Unlock()
-	fmt.Println("unlocked")
 }
