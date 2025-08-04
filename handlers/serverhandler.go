@@ -19,12 +19,11 @@ func (msg Message) String() string {
 var clients []Client
 var clientsMutex = &sync.Mutex{}
 
-func RunTCPServer(port string) {
+func RunTCPServer(port string) error {
 
 	listener, err := net.Listen("tcp", port)
 	if err != nil {
-		fmt.Println("Error starting server:", err)
-		os.Exit(1)
+		return err
 	}
 	defer listener.Close() // we clean the port when done with program
 
