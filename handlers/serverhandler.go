@@ -8,6 +8,7 @@ import (
 )
 
 const defaultPort string = ":8989"
+const maxClients = 10
 
 func (msg Message) String() string {
 	return fmt.Sprintf("[%s][%s]: %s",
@@ -37,6 +38,16 @@ func RunTCPServer(port string) error {
 			fmt.Println("Error accepting client:", err)
 			continue
 		}
+
+		// Yo Bader this is for checking if we've reached 10 Clients
+		clientsMutex.Lock()
+		if len(clients) >= maxClients {
+			fmt.Fprint(conn, "Server is full. Maximum 10 clients allowed.\n")
+			conn.Close()
+			clientsMutex.Unlock()
+			continue
+		}
+		clientsMutex.Unlock()
 
 		go HandleClientConnection(conn, &clients, clientsMutex)
 	}
