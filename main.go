@@ -6,5 +6,5 @@ import (
 
 func main() {
 	port := handlers.GetPort()
-	handlers.StartServer(port)
+	handlers.RunTCPServer(port)
 }
