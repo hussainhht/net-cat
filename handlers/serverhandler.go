@@ -10,25 +10,22 @@ import (
 const defaultPort string = ":8989"
 const maxClients = 10
 
-func (msg Message) String() string {
-	return fmt.Sprintf("[%s][%s]: %s",
-		msg.Timestamp.Format("2006-01-02 15:04:05"),
-		msg.Sender.Name,
-		msg.Content)
-}
+var Clients []Client
+var ClientsMutex = &sync.Mutex{}
 
-var clients []Client
-var clientsMutex = &sync.Mutex{}
+var Rooms []*Room
+var RoomsMutex = &sync.Mutex{}
 
 func RunTCPServer(port string) error {
 
 	listener, err := net.Listen("tcp", port)
+
 	if err != nil {
 		return err
 	}
 	defer listener.Close() // we clean the port when done with program
 
-	fmt.Println("Server listening on port" + port)
+	fmt.Println("Server listening on port " + port)
 
 	// waiting for clients
 	for {
@@ -40,16 +37,16 @@ func RunTCPServer(port string) error {
 		}
 
 		// Yo Bader this is for checking if we've reached 10 Clients
-		clientsMutex.Lock()
-		if len(clients) >= maxClients {
+		ClientsMutex.Lock()
+		if len(Clients) >= maxClients {
 			fmt.Fprint(conn, "Server is full. Maximum 10 clients allowed.\n")
 			conn.Close()
-			clientsMutex.Unlock()
+			ClientsMutex.Unlock()
 			continue
 		}
-		clientsMutex.Unlock()
+		ClientsMutex.Unlock()
 
-		go HandleClientConnection(conn, &clients, clientsMutex)
+		go HandleClientConnection(conn, &Clients, ClientsMutex)
 	}
 }
 
@@ -65,4 +62,17 @@ func GetPort() string {
 		port = ":" + Args[1]
 	}
 	return port
+}
+
+func CreateRoom(roomName string) *Room {
+	RoomsMutex.Lock()
+	defer RoomsMutex.Unlock()
+
+	newRoom := Room{
+		Name:    roomName,
+		Members: make([]*Client, 0),
+		History: make([]*Message, 0),
+	}
+	Rooms = append(Rooms, &newRoom)
+	return &newRoom // Return pointer to the room in the slice
 }

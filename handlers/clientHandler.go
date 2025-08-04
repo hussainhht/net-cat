@@ -34,8 +34,38 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		fmt.Println(usernameError)
 		return usernameError
 	}
-	RegisterClient(clientsMutex, clients, username, conn)
+	requestedRoomName, roomError := PromptForRoom(reader, conn)
+	if roomError != nil {
+		fmt.Println(roomError)
+		return roomError
+	}
+	var requestedRoom *Room
+	// check if room already exists
+
+	for i := range Rooms {
+		if Rooms[i].Name == requestedRoomName {
+			// room exists - connect client to room
+			requestedRoom = Rooms[i] // Get pointer to the actual room in slice
+			break
+		}
+	}
+	// room doesnt already exists
+	if requestedRoom == nil {
+		requestedRoom = CreateRoom(requestedRoomName)
+		fmt.Println("Creating new room")
+	}
+	registerError := RegisterClient(username, conn, requestedRoom)
+	if registerError != nil {
+		fmt.Println(registerError)
+		return registerError
+	}
 	fmt.Println("Connection Established from username: " + username)
+	fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
+	
+	fmt.Println(Rooms)
+	for _, client := range Rooms[0].Members {
+		fmt.Println(client.Name)
+	}
 	return nil
 }
 
@@ -51,21 +81,34 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 	return username, nil
 }
 
-func RegisterClient(clientsMutex *sync.Mutex, clients *[]Client, username string, conn net.Conn) {
-	clientsMutex.Lock()
-	defer clientsMutex.Unlock()
+func PromptForRoom(reader *bufio.Reader, conn net.Conn) (string, error) {
+	conn.Write([]byte("Enter Room:"))
+	room, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("couldnt read room")
+		return "", err
+	}
+	room = strings.TrimSpace(room)
+	return room, nil
+}
 
-	for _, client := range *clients {
+func RegisterClient(username string, conn net.Conn, room *Room) error {
+	// First, check if username is taken and add client
+	ClientsMutex.Lock()
+	for _, client := range Clients {
 		if client.Name == username {
-			fmt.Fprint(conn, "Name already taken.\n")
+			ClientsMutex.Unlock()
 			conn.Close()
-			return
+			return fmt.Errorf("name is already taken")
 		}
 	}
 
 	newClient := Client{
 		Name:       username,
 		Connection: conn,
+		Room:       room,
 	}
-	*clients = append(*clients, newClient)
+	Clients = append(Clients, newClient)
+	room.AddMember(newClient)
+	return nil
 }
