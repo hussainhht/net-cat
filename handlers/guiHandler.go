@@ -1,4 +1,4 @@
-package main
+package handlers
 
 import (
 	"fmt"
@@ -10,14 +10,14 @@ import (
 var (
 	username = "Batool"
 	roomName = "Real Madrid On Top"
-	users    = []string{"Bader", "Hussain","Batool"}
+	users    = []string{"Bader", "Hussain", "Batool"}
 	messages = []string{
 		"[2025-08-04 10:00:00][Bader]: Hello everyone!",
 		"[2025-08-04 10:02:30][Batool]: Hey folks, good to see you.",
 	}
 )
 
-func main() {
+func GuiHandler() {
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
 		log.Panicln(err)
@@ -103,7 +103,7 @@ func layout(g *gocui.Gui) error {
 }
 
 func keybindings(g *gocui.Gui) error {
-	
+
 	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
 		return err
 	}
