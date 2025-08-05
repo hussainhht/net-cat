@@ -116,7 +116,8 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client ,error)
 	defer ClientsMutex.Unlock()
 	for _, client := range Clients {
 		if client.Name == username {
-			ClientsMutex.Unlock()
+			// ClientsMutex.Unlock() defer is used to ensure the mutex is released
+			fmt.Fprint(conn, "Username is already taken. Please choose a different name.\n")
 			conn.Close()
 			return nil, fmt.Errorf("name is already taken")
 		}
