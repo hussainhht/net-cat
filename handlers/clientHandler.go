@@ -66,42 +66,23 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 
 	fmt.Println(Rooms)
 
-	for {
-		fmt.Fprint(conn, "Enter a message: ")
-		msgContent, msgError := reader.ReadString('\n')
-		if msgError != nil {
-			client.Room.RemoveMember(*client)
-
-			ClientsMutex.Lock()
-			for i, c := range Clients {
-				if c.Name == client.Name {
-					Clients = append(Clients[:i], Clients[i+1:]...)
-					break
-				}
-			}
-			ClientsMutex.Unlock()
-			leaveMsg := Message{
-				Timestamp: time.Now(),
-				Sender:    &Client{Name: "SERVER"}, // virtual sender
-				Content:   fmt.Sprintf("%s has left the chat.\n", client.Name),
-			}
-			client.Room.BroadcastMessage(leaveMsg)
-			return msgError 
-		}
-		fmt.Fprint(conn, "\033[1A")
-		fmt.Fprint(conn, "\033[2K")
-		msg := Message{
-			Timestamp: time.Now(),
-			Sender:    client,
-			Content:   msgContent,
-		}
-		client.Room.BroadcastMessage(msg)
+	// Send join notification to all clients in the room
+	joinMsg := Message{
+		Timestamp: time.Now(),
+		Sender:    &Client{Name: "SERVER"},
+		Content:   fmt.Sprintf("%s has joined our chat...\n", client.Name),
 	}
+	client.Room.BroadcastMessage(joinMsg)
+
+	// Launch GUI after successful registration
+	fmt.Fprint(conn, "Launching GUI interface...\n")
+	GuiHandler(client)
+	return nil
 }
 
 func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 	conn.Write([]byte(ConnectionMessage))
-	conn.Write([]byte("Enter Username:"))
+	conn.Write([]byte("[ENTER YOUR NAME]:"))
 	username, err := reader.ReadString('\n')
 	if err != nil {
 		fmt.Println("couldnt read name")

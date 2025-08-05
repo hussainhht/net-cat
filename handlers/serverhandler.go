@@ -25,11 +25,10 @@ func RunTCPServer(port string) error {
 	}
 	defer listener.Close() // we clean the port when done with program
 
-	fmt.Println("Server listening on port " + port)
+	fmt.Printf("Listening on the port %s\n", port)
 
 	// waiting for clients
 	for {
-		fmt.Println("Waiting for connection")
 		conn, err := listener.Accept()
 		if err != nil {
 			fmt.Println("Error accepting client:", err)
@@ -51,15 +50,15 @@ func RunTCPServer(port string) error {
 }
 
 func GetPort() string {
-	Args := os.Args
-	if len(Args) > 2 {
-		fmt.Println("Usage: go run main.go <port>")
+	args := os.Args
+	if len(args) > 2 {
+		fmt.Println("[USAGE]: ./TCPChat $port")
 		os.Exit(1)
 	}
 
 	port := defaultPort
-	if len(Args) == 2 {
-		port = ":" + Args[1]
+	if len(args) == 2 {
+		port = ":" + args[1]
 	}
 	return port
 }

@@ -25,7 +25,7 @@ type Message struct {
 }
 
 func (msg Message) String() string {
-	return fmt.Sprintf("[%s][%s]: %s",
+	return fmt.Sprintf("[%s][%s]:%s",
 		msg.Timestamp.Format("2006-01-02 15:04:05"),
 		msg.Sender.Name,
 		msg.Content)
