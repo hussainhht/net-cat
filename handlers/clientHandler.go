@@ -6,6 +6,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 )
 
 var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
@@ -34,6 +35,7 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		fmt.Println(usernameError)
 		return usernameError
 	}
+
 	requestedRoomName, roomError := PromptForRoom(reader, conn)
 	if roomError != nil {
 		fmt.Println(roomError)
@@ -54,19 +56,28 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		requestedRoom = CreateRoom(requestedRoomName)
 		fmt.Println("Creating new room")
 	}
-	registerError := RegisterClient(username, conn, requestedRoom)
+	client, registerError := RegisterClient(username, conn, requestedRoom)
 	if registerError != nil {
 		fmt.Println(registerError)
 		return registerError
 	}
 	fmt.Println("Connection Established from username: " + username)
 	fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
-	
+
 	fmt.Println(Rooms)
-	for _, client := range Rooms[0].Members {
-		fmt.Println(client.Name)
+	
+	for {
+		fmt.Fprint(conn, "Enter a message: ")
+		msgContent, msgError := reader.ReadString('\n')
+		if msgError != nil {
+
+		}
+		msg := Message{
+			Timestamp: time.Now(),
+			Sender: *client,
+			Content: msgContent,
+		}
 	}
-	return nil
 }
 
 func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
@@ -78,6 +89,8 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 		return "", err
 	}
 	username = strings.TrimSpace(username)
+	fmt.Fprint(conn, "\033[1A")
+	fmt.Fprint(conn, "\033[2K")
 	return username, nil
 }
 
@@ -89,12 +102,15 @@ func PromptForRoom(reader *bufio.Reader, conn net.Conn) (string, error) {
 		return "", err
 	}
 	room = strings.TrimSpace(room)
+	fmt.Fprint(conn, "\033[1A")
+	fmt.Fprint(conn, "\033[2K")
 	return room, nil
 }
 
-func RegisterClient(username string, conn net.Conn, room *Room) error {
+func RegisterClient(username string, conn net.Conn, room *Room) (Client ,error) {
 	// First, check if username is taken and add client
 	ClientsMutex.Lock()
+	defer ClientsMutex.Unlock()
 	for _, client := range Clients {
 		if client.Name == username {
 			ClientsMutex.Unlock()
@@ -110,5 +126,5 @@ func RegisterClient(username string, conn net.Conn, room *Room) error {
 	}
 	Clients = append(Clients, newClient)
 	room.AddMember(newClient)
-	return nil
+	return newClient nil
 }
