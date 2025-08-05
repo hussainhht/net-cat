@@ -65,19 +65,35 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 	fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
 
 	fmt.Println(Rooms)
-	
+
 	for {
 		fmt.Fprint(conn, "Enter a message: ")
 		msgContent, msgError := reader.ReadString('\n')
 		if msgError != nil {
-			
+			client.Room.RemoveMember(*client)
+
+			ClientsMutex.Lock()
+			for i, c := range Clients {
+				if c.Name == client.Name {
+					Clients = append(Clients[:i], Clients[i+1:]...)
+					break
+				}
+			}
+			ClientsMutex.Unlock()
+			leaveMsg := Message{
+				Timestamp: time.Now(),
+				Sender:    &Client{Name: "SERVER"}, // virtual sender
+				Content:   fmt.Sprintf("%s has left the chat.\n", client.Name),
+			}
+			client.Room.BroadcastMessage(leaveMsg)
+			return msgError 
 		}
 		fmt.Fprint(conn, "\033[1A")
 		fmt.Fprint(conn, "\033[2K")
 		msg := Message{
 			Timestamp: time.Now(),
-			Sender: client,
-			Content: msgContent,
+			Sender:    client,
+			Content:   msgContent,
 		}
 		client.Room.BroadcastMessage(msg)
 	}
@@ -110,7 +126,7 @@ func PromptForRoom(reader *bufio.Reader, conn net.Conn) (string, error) {
 	return room, nil
 }
 
-func RegisterClient(username string, conn net.Conn, room *Room) (*Client ,error) {
+func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error) {
 	// First, check if username is taken and add client
 	ClientsMutex.Lock()
 	defer ClientsMutex.Unlock()
