@@ -61,4 +61,8 @@ func (room *Room) BroadcastMessage(message Message) {
 	RoomsMutex.Lock()
 	defer RoomsMutex.Unlock()
 	room.History = append(room.History, &message)
+
+	for _, member := range room.Members {
+		fmt.Fprint(member.Connection, message.String())
+	}
 }

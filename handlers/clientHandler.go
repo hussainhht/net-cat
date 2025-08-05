@@ -70,13 +70,16 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		fmt.Fprint(conn, "Enter a message: ")
 		msgContent, msgError := reader.ReadString('\n')
 		if msgError != nil {
-
+			
 		}
+		fmt.Fprint(conn, "\033[1A")
+		fmt.Fprint(conn, "\033[2K")
 		msg := Message{
 			Timestamp: time.Now(),
-			Sender: *client,
+			Sender: client,
 			Content: msgContent,
 		}
+		client.Room.BroadcastMessage(msg)
 	}
 }
 
@@ -107,7 +110,7 @@ func PromptForRoom(reader *bufio.Reader, conn net.Conn) (string, error) {
 	return room, nil
 }
 
-func RegisterClient(username string, conn net.Conn, room *Room) (Client ,error) {
+func RegisterClient(username string, conn net.Conn, room *Room) (*Client ,error) {
 	// First, check if username is taken and add client
 	ClientsMutex.Lock()
 	defer ClientsMutex.Unlock()
@@ -115,7 +118,7 @@ func RegisterClient(username string, conn net.Conn, room *Room) (Client ,error) 
 		if client.Name == username {
 			ClientsMutex.Unlock()
 			conn.Close()
-			return fmt.Errorf("name is already taken")
+			return nil, fmt.Errorf("name is already taken")
 		}
 	}
 
@@ -126,5 +129,5 @@ func RegisterClient(username string, conn net.Conn, room *Room) (Client ,error) 
 	}
 	Clients = append(Clients, newClient)
 	room.AddMember(newClient)
-	return newClient nil
+	return &newClient, nil
 }
