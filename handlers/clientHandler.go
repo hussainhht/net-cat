@@ -42,6 +42,7 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		return roomError
 	}
 	var requestedRoom *Room
+
 	// check if room already exists
 
 	for i := range Rooms {
@@ -75,8 +76,26 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 	client.Room.BroadcastMessage(joinMsg)
 
 	// Launch GUI after successful registration
-	fmt.Fprint(conn, "Launching GUI interface...\n")
-	GuiHandler(client)
+
+	conn.Write([]byte("[DO YOU WANT GUI ?] (YES,NO):"))
+	response, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("couldn't read response")
+		return err
+	}
+	response = strings.TrimSpace(response)
+	if strings.ToLower(response) == "yes" {
+		fmt.Fprint(conn, "Launching GUI...\n")
+		GuiHandler(client)
+
+		return nil
+	} else {
+		fmt.Fprint(conn, "Launching terminal interface...\n")
+		
+		
+
+	}
+
 	return nil
 }
 
@@ -126,6 +145,7 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 		Room:       room,
 	}
 	Clients = append(Clients, newClient)
+
 	room.AddMember(newClient)
 	return &newClient, nil
 }
