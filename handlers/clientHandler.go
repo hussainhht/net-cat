@@ -91,6 +91,7 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		return nil
 	} else {
 		fmt.Fprint(conn, "Launching terminal interface...\n")
+		TerminalHandler(client, reader)
 		
 		
 
