@@ -5,6 +5,7 @@ import (
 	"net"
 	"os"
 	"sync"
+	"time"
 )
 
 const defaultPort string = ":8989"
@@ -73,5 +74,6 @@ func CreateRoom(roomName string) *Room {
 		History: make([]*Message, 0),
 	}
 	Rooms = append(Rooms, &newRoom)
+	newRoom.TimeCreated = time.Now() // Set the creation time
 	return &newRoom // Return pointer to the room in the slice
 }

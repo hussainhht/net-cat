@@ -111,6 +111,9 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 			Content:   msgContent,
 		}
 		client.Room.BroadcastMessage(msg)
+		clientsMutex.Lock()
+		client.LastActive = time.Now()
+		clientsMutex.Unlock()
 	}
 }
 
