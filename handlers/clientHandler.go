@@ -66,38 +66,22 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 	fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
 
 	fmt.Println(Rooms)
-
-	// Send join notification to all clients in the room
-	joinMsg := Message{
-		Timestamp: time.Now(),
-		Sender:    &Client{Name: "SERVER"},
-		Content:   fmt.Sprintf("%s has joined our chat...\n", client.Name),
+	
+	for {
+		fmt.Fprint(conn, "Enter a message: ")
+		msgContent, msgError := reader.ReadString('\n')
+		if msgError != nil {
+			
+		}
+		fmt.Fprint(conn, "\033[1A")
+		fmt.Fprint(conn, "\033[2K")
+		msg := Message{
+			Timestamp: time.Now(),
+			Sender: client,
+			Content: msgContent,
+		}
+		client.Room.BroadcastMessage(msg)
 	}
-	client.Room.BroadcastMessage(joinMsg)
-
-	// Launch GUI after successful registration
-
-	conn.Write([]byte("[DO YOU WANT GUI ?] (YES,NO):"))
-	response, err := reader.ReadString('\n')
-	if err != nil {
-		fmt.Println("couldn't read response")
-		return err
-	}
-	response = strings.TrimSpace(response)
-	if strings.ToLower(response) == "yes" {
-		fmt.Fprint(conn, "Launching GUI...\n")
-		GuiHandler(client)
-
-		return nil
-	} else {
-		fmt.Fprint(conn, "Launching terminal interface...\n")
-		TerminalHandler(client, reader)
-		
-		
-
-	}
-
-	return nil
 }
 
 func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
