@@ -73,6 +73,7 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 			Sender:    client,
 			Content:   "",
 		}
+		fmt.Fprint(conn, "\r") // clear line
 		fmt.Fprint(conn, msg)
 		msgContent, msgError := reader.ReadString('\n')
 		if msgError != nil {
@@ -93,7 +94,6 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 			}
 			client.Room.BroadcastMessage(leaveMsg)
 			return msgError
-
 		}
 		fmt.Fprint(conn, "\033[1A")
 		fmt.Fprint(conn, "\033[2K")
