@@ -66,7 +66,7 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 	fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
 
 	fmt.Println(Rooms)
-
+	DisplayRoomHistory(client)
 	for {
 		msg := Message{
 			Timestamp: time.Now(),
@@ -133,9 +133,17 @@ func PromptForRoom(reader *bufio.Reader, conn net.Conn) (string, error) {
 	return room, nil
 }
 
-// func DisplayRoomHistory(client Client) error {
-	
-// }
+func DisplayRoomHistory(client *Client) error {
+	room := client.Room
+	if room == nil {
+		return fmt.Errorf("client is not in a room")
+	}
+
+	for _, msg := range room.History {
+		fmt.Fprint(client.Connection, msg.String())
+	}
+	return nil
+}
 
 func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error) {
 	// First, check if username is taken and add client
@@ -157,7 +165,7 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 	}
 	Clients = append(Clients, newClient)
 
-	room.AddMember(newClient)
+	
 
 	joinMsg := Message{
 		Timestamp: time.Now(),
@@ -165,7 +173,7 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 		Content:   fmt.Sprintf("%s has joined the chat.\n", newClient.Name),
 	}
 	newClient.Room.BroadcastMessage(joinMsg)
-
+	room.AddMember(newClient)
 	return &newClient, nil
 }
 
