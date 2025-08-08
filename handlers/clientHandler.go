@@ -133,6 +133,10 @@ func PromptForRoom(reader *bufio.Reader, conn net.Conn) (string, error) {
 	return room, nil
 }
 
+// func DisplayRoomHistory(client Client) error {
+	
+// }
+
 func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error) {
 	// First, check if username is taken and add client
 	ClientsMutex.Lock()
@@ -163,4 +167,9 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 	newClient.Room.BroadcastMessage(joinMsg)
 
 	return &newClient, nil
+}
+
+func kickSelectedUser(client Client) {
+	client.Connection.Close()
+	fmt.Printf("Kicked user: %s\n", client.Name)
 }
