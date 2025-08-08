@@ -86,6 +86,7 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 					break
 				}
 			}
+
 			ClientsMutex.Unlock()
 			leaveMsg := Message{
 				Timestamp: time.Now(),
@@ -94,6 +95,14 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 			}
 			client.Room.BroadcastMessage(leaveMsg)
 			return msgError
+		}
+
+		msgContent = strings.TrimRight(msgContent, "\r\n")
+		if consumed, err := HandleCommand(msgContent, client); consumed {
+			if err != nil {
+				fmt.Println("Error handling command:", err)
+			}
+			continue
 		}
 		fmt.Fprint(conn, "\033[1A")
 		fmt.Fprint(conn, "\033[2K")
@@ -164,8 +173,6 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 		Room:       room,
 	}
 	Clients = append(Clients, newClient)
-
-	
 
 	joinMsg := Message{
 		Timestamp: time.Now(),

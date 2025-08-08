@@ -63,7 +63,7 @@ func (room *Room) BroadcastMessage(message Message) {
 	room.History = append(room.History, &message)
 
 	for _, member := range room.Members {
-		fmt.Fprint(member.Connection, "\r")     // clear line
+		fmt.Fprint(member.Connection, "\r") // clear line
 		fmt.Fprint(member.Connection, message.String())
 		fmt.Fprint(member.Connection, Message{
 			Timestamp: time.Now(),
