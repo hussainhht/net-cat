@@ -66,19 +66,25 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 	fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
 
 	fmt.Println(Rooms)
-	
+
 	for {
-		fmt.Fprint(conn, "Enter a message: ")
+		msg := Message{
+			Timestamp: time.Now(),
+			Sender:    client,
+			Content:   "",
+		}
+		fmt.Fprint(conn, msg)
 		msgContent, msgError := reader.ReadString('\n')
 		if msgError != nil {
 			
+
 		}
 		fmt.Fprint(conn, "\033[1A")
 		fmt.Fprint(conn, "\033[2K")
-		msg := Message{
+		msg = Message{
 			Timestamp: time.Now(),
-			Sender: client,
-			Content: msgContent,
+			Sender:    client,
+			Content:   msgContent,
 		}
 		client.Room.BroadcastMessage(msg)
 	}
