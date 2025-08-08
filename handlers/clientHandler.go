@@ -154,5 +154,13 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 	Clients = append(Clients, newClient)
 
 	room.AddMember(newClient)
+
+	joinMsg := Message{
+		Timestamp: time.Now(),
+		Sender:    &Client{Name: "SERVER"}, // virtual sender
+		Content:   fmt.Sprintf("%s has joined the chat.\n", newClient.Name),
+	}
+	newClient.Room.BroadcastMessage(joinMsg)
+
 	return &newClient, nil
 }
