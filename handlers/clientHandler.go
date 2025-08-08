@@ -97,7 +97,6 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 			return msgError
 		}
 
-		msgContent = strings.TrimRight(msgContent, "\r\n")
 		if consumed, err := HandleCommand(msgContent, client); consumed {
 			if err != nil {
 				fmt.Println("Error handling command:", err)

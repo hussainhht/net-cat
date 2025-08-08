@@ -10,13 +10,16 @@ type Client struct {
 	Name       string
 	Connection net.Conn
 	Room       *Room
+	LastActive time.Time
 }
 
 type Room struct {
 	Name    string
 	Members []*Client
 	History []*Message
+	TimeCreated time.Time
 }
+
 
 type Message struct {
 	Timestamp time.Time

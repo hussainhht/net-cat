@@ -16,6 +16,10 @@ func HandleCommand(line string, client *Client) (bool, error) {
 
 	pats := strings.SplitN(line, " ", 2)
 	cmd := strings.ToLower(pats[0])
+
+	if !strings.HasPrefix(cmd, "/") {
+		return false, nil
+	}
 	// args := pats[1:]
 
 	switch cmd {
