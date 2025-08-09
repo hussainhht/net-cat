@@ -55,17 +55,17 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 	// room doesnt already exists
 	if requestedRoom == nil {
 		requestedRoom = CreateRoom(requestedRoomName)
-		fmt.Println("Creating new room")
+		// fmt.Println("Creating new room")
 	}
 	client, registerError := RegisterClient(username, conn, requestedRoom)
 	if registerError != nil {
 		fmt.Println(registerError)
 		return registerError
 	}
-	fmt.Println("Connection Established from username: " + username)
-	fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
+	// fmt.Println("Connection Established from username: " + username)
+	// fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
 
-	fmt.Println(Rooms)
+	// fmt.Println(Rooms)
 	DisplayRoomHistory(client)
 	for {
 		msg := Message{
@@ -126,8 +126,8 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 		return "", err
 	}
 	username = strings.TrimSpace(username)
-	fmt.Fprint(conn, "\033[1A")
-	fmt.Fprint(conn, "\033[2K")
+	// fmt.Fprint(conn, "\033[1A")
+	// fmt.Fprint(conn, "\033[2K")
 	return username, nil
 }
 
