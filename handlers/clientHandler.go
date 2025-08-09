@@ -197,7 +197,5 @@ func kickSelectedUser(client Client) {
 	}
 
 	client.Connection.Close()
-
-	fmt.Printf("Kicked user: %s\n", client.Name)
 }
 
