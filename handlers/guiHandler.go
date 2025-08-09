@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"log"
+	// "math"
 
 	"github.com/jroimartin/gocui"
 )
@@ -40,6 +41,12 @@ func RunGUI() error {
 func layout(g *gocui.Gui) error {
 	maxX, maxY := g.Size()
 
+	if maxX < 40 {
+		maxX = 40
+	}
+	if maxY < 10 {
+		maxY = 10
+	}
 	// Rooms view
 	v, err := g.SetView("rooms", 0, 0, 30, maxY-3)
 	if err != nil && err != gocui.ErrUnknownView {
