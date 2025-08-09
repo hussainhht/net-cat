@@ -126,8 +126,8 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 		return "", err
 	}
 	username = strings.TrimSpace(username)
-	// fmt.Fprint(conn, "\033[1A")
-	// fmt.Fprint(conn, "\033[2K")
+	fmt.Fprint(conn, "\033[1A")
+	fmt.Fprint(conn, "\033[2K")
 	return username, nil
 }
 
