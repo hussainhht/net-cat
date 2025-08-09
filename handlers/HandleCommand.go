@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"strings"
+	"time"
 )
 
 var ErrClientExit = fmt.Errorf("client exit")
@@ -20,7 +21,7 @@ func HandleCommand(line string, client *Client) (bool, error) {
 	if !strings.HasPrefix(cmd, "/") {
 		return false, nil
 	}
-	args := pats[1:]
+	// args := pats[1:]
 
 	switch cmd {
 	case "/help":
@@ -29,10 +30,10 @@ func HandleCommand(line string, client *Client) (bool, error) {
 		return true, cmdWho(client)
 	// case "/room":
 	// 	return true, cmdRoom(client)
-	case "/rename":
-		return true, cmdRename(client, args)
-	// case "/exit", "/quit":
-	// 	return true, cmdExit(client)
+	// case "/rename":
+	// 	return true, cmdRename(client, args)
+	case "/exit", "/quit":
+		return true, cmdExit(client)
 	default:
 		if strings.HasPrefix(cmd, "/") {
 			return true, fmt.Errorf("unknown command: %s", cmd)
@@ -47,7 +48,6 @@ Commands:
 /help                 Show this help
 /who | /list          Show members in this room
 /room                 Show your current room
-/rename <newName>     Change your username
 /exit                 Leave the chat
 `
 	return c.Send(help + "\n")
@@ -98,6 +98,28 @@ func cmdRename(c *Client, args []string) error {
 
 	c.Name = newName
 	return c.Send(fmt.Sprintf("Your name has been changed to %s\n and your old name was %s\n", newName, old))
+}
+
+func cmdExit(c *Client) error {
+	if c.Room != nil {
+		leaveMsg := Message{
+			Timestamp: time.Now(),
+			Sender:    &Client{Name: "SERVER"}, // virtual sender
+			Content:   fmt.Sprintf("%s has left the chat.\n", c.Name),
+		}
+		c.Room.BroadcastMessage(leaveMsg)
+		c.Room.RemoveMember(*c)
+	}
+
+	for i, client := range Clients {
+		if client.Name == c.Name {
+			Clients = append(Clients[:i], Clients[i+1:]...)
+			break
+		}
+	}
+
+	c.Connection.Close()
+	return ErrClientExit
 }
 
 func (c *Client) Send(s string) error {
