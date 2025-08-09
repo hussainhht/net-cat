@@ -3,244 +3,176 @@ package handlers
 import (
 	"fmt"
 	"log"
-	"strings"
-	"time"
 
 	"github.com/jroimartin/gocui"
 )
 
-// GUI state variables filled with Client Data
+// GUI state
 var (
-	currentUsername string
-	currentRoomName string
-	currentUsers    []string
-	currentMessages []string
-	guiInstance     *gocui.Gui
-	clientInstance  *Client
+	guiInstance       *gocui.Gui
+	selectedRoomIndex int
+	selectedUserIndex int
 )
 
-func GuiHandler(client *Client) {
-	clientInstance = client
-
-	// Getting GUI variables from client data
-	updateGUIVariables()
-
+// RunGUI starts the admin panel
+func RunGUI() error {
 	g, err := gocui.NewGui(gocui.OutputNormal)
 	if err != nil {
-		log.Panicln(err)
+		return err
 	}
 	defer g.Close()
 
 	guiInstance = g
-
-	g.Cursor = true
+	g.Cursor = false
 	g.SetManagerFunc(layout)
 
-	if err := keybindings(g, client); err != nil {
-		log.Panicln(err)
+	if err := setKeybindings(g); err != nil {
+		return err
 	}
-
-	// Start a goroutine to refresh the GUI periodically
-	go refreshGUI()
 
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
 		log.Panicln(err)
 	}
+	return nil
 }
 
-func updateGUIVariables() {
-	if clientInstance == nil {
-		return
-	}
-
-	currentUsername = clientInstance.Name
-	if clientInstance.Room != nil {
-		currentRoomName = clientInstance.Room.Name
-
-		// Get users from room members
-		currentUsers = []string{}
-		for _, member := range clientInstance.Room.Members {
-			currentUsers = append(currentUsers, member.Name)
-		}
-
-		// Get messages from room history
-		currentMessages = []string{}
-		for _, msg := range clientInstance.Room.History {
-			currentMessages = append(currentMessages, msg.String())
-		}
-	}
-}
-
-func refreshGUI() {
-	ticker := time.NewTicker(1 * time.Second) // Refresh every second
-	defer ticker.Stop()
-
-	for range ticker.C {
-		if guiInstance != nil {
-			updateGUIVariables()
-			guiInstance.Update(func(g *gocui.Gui) error {
-				return nil
-			})
-		}
-	}
-}
-
+// views: rooms, users, footer
 func layout(g *gocui.Gui) error {
-	maxX, maxY := g.Size() // terminal size
+	maxX, maxY := g.Size()
 
-	// Room name top
-	v, err := g.SetView("room", 0, 0, maxX-1, 2)
-	if err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Frame = true
-		v.Title = "Current Room"
+	// Rooms view
+	v, err := g.SetView("rooms", 0, 0, 30, maxY-3)
+	if err != nil && err != gocui.ErrUnknownView {
+		return err
 	}
+	v.Title = "Rooms"
+	v.Highlight = true
 	v.Clear()
-	fmt.Fprintf(v, " Room: %s ", currentRoomName)
 
-	// Users list right
-	v, err = g.SetView("users", maxX-25, 3, maxX-1, maxY-5)
-	if err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
+	for i, room := range Rooms {
+		prefix := "  "
+		if i == selectedRoomIndex {
+			prefix = "➤ "
 		}
-		v.Title = "Users"
+		fmt.Fprintf(v, "%s%s\n", prefix, room.Name)
 	}
+
+	// Users view
+	v, err = g.SetView("users", 32, 0, maxX-1, maxY-3)
+	if err != nil && err != gocui.ErrUnknownView {
+		return err
+	}
+	v.Title = "Users in Room"
+	v.Highlight = true
 	v.Clear()
-	for _, u := range currentUsers {
-		fmt.Fprintf(v, "• %s\n", u)
-	}
 
-	// Chat messages area left side
-	v, err = g.SetView("chat", 0, 3, maxX-26, maxY-5)
-	if err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Title = "Chat"
-		v.Wrap = true
-		v.Autoscroll = true
-	}
-	v.Clear()
-	for _, m := range currentMessages {
-		fmt.Fprintln(v, m)
-	}
+	if selectedRoomIndex < len(Rooms) {
+		room := Rooms[selectedRoomIndex]
+		members := getRoomMembers(room)
 
-	// Input box at bottom
-	v, err = g.SetView("input", 0, maxY-5, maxX-1, maxY-3)
-	if err != nil {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Title = fmt.Sprintf("Message (%s)", currentUsername)
-		v.Editable = true
-		v.Wrap = true
-		if _, err := g.SetCurrentView("input"); err != nil {
-			return err
+		for i, member := range members {
+			prefix := "  "
+			if i == selectedUserIndex {
+				prefix = "➤ "
+			}
+			fmt.Fprintf(v, "%s%s\n", prefix, member.Name)
 		}
 	}
 
-	// Footer with commands/help
-	v, err = g.SetView("footer", 0, maxY-3, maxX-1, maxY-1)
-	if err != nil {
+	// Footer
+	if v, err := g.SetView("footer", 0, maxY-2, maxX-1, maxY); err != nil {
 		if err != gocui.ErrUnknownView {
 			return err
 		}
 		v.Frame = false
-	}
-	v.Clear()
-	fmt.Fprintln(v, "Commands: /rename <newname> | /room <roomname> | Ctrl+C to quit")
-
-	return nil
-}
-
-func keybindings(g *gocui.Gui, client *Client) error {
-
-	if err := g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit); err != nil {
-		return err
-	}
-
-	if err := g.SetKeybinding("input", gocui.KeyEnter, gocui.ModNone, func(g *gocui.Gui, v *gocui.View) error {
-		input := strings.TrimSpace(v.Buffer())
-		// Don't broadcast empty messages
-		if input != "" {
-			// Create a new message
-			msg := Message{
-				Timestamp: time.Now(),
-				Sender:    client,
-				Content:   input,
-			}
-
-			// Try to broadcast the message to all clients in the room
-			if client.Room != nil {
-				err := broadcastMessage(msg)
-				if err != nil {
-					// If broadcasting fails, still add to local display
-					log.Printf("Failed to broadcast message: %v", err)
-				}
-			}
-
-			// Add to local messages for GUI display
-			currentMessages = append(currentMessages, msg.String())
-		}
-
-		v.Clear()
-		v.SetCursor(0, 0)
-		return nil
-	}); err != nil {
-		return err
+		v.BgColor = gocui.ColorBlue
+		v.FgColor = gocui.ColorWhite
+		fmt.Fprintln(v, " ↑ ↓: Switch Room  ← →: Select User  Ctrl-D: Kick  Ctrl-C: Quit ")
 	}
 
 	return nil
 }
 
-func broadcastMessage(msg Message) error {
-	if clientInstance == nil || clientInstance.Room == nil {
-		return fmt.Errorf("client or room is nil")
+// Navigation & bindings
+func setKeybindings(g *gocui.Gui) error {
+	g.SetKeybinding("", gocui.KeyArrowUp, gocui.ModNone, prevRoom)
+	g.SetKeybinding("", gocui.KeyArrowDown, gocui.ModNone, nextRoom)
+	g.SetKeybinding("", gocui.KeyArrowLeft, gocui.ModNone, prevUser)
+	g.SetKeybinding("", gocui.KeyArrowRight, gocui.ModNone, nextUser)
+	g.SetKeybinding("", gocui.KeyCtrlD, gocui.ModNone, kickMock)
+	g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit)
+	return nil
+}
+
+// Navigation handlers
+func prevRoom(g *gocui.Gui, v *gocui.View) error {
+	if selectedRoomIndex > 0 {
+		selectedRoomIndex--
+		selectedUserIndex = 0
 	}
+	g.Update(layout)
+	return nil
+}
 
-	// Add message to room history
-	clientInstance.Room.History = append(clientInstance.Room.History, &msg)
+func nextRoom(g *gocui.Gui, v *gocui.View) error {
+	if selectedRoomIndex < len(Rooms)-1 {
+		selectedRoomIndex++
+		selectedUserIndex = 0
+	}
+	g.Update(layout)
+	return nil
+}
 
-	// Broadcast to all clients in the room
-	for _, member := range clientInstance.Room.Members {
-		if member.Connection != nil {
-			_, err := fmt.Fprintf(member.Connection, "%s\n", msg.String())
-			if err != nil {
-				log.Printf("Failed to send message to %s: %v", member.Name, err)
-			}
+func prevUser(g *gocui.Gui, v *gocui.View) error {
+	if selectedUserIndex > 0 {
+		selectedUserIndex--
+	}
+	g.Update(layout)
+	return nil
+}
+
+func nextUser(g *gocui.Gui, v *gocui.View) error {
+	if selectedRoomIndex < len(Rooms) {
+		members := getRoomMembers(Rooms[selectedRoomIndex])
+		if selectedUserIndex < len(members)-1 {
+			selectedUserIndex++
 		}
 	}
-
+	g.Update(layout)
 	return nil
 }
 
 func quit(g *gocui.Gui, v *gocui.View) error {
-	// Clean up when quitting
-	if clientInstance != nil && clientInstance.Room != nil {
-		// Remove client from room
-		clientInstance.Room.RemoveMember(*clientInstance)
-
-		// Remove from global clients list
-		ClientsMutex.Lock()
-		for i, c := range Clients {
-			if c.Name == clientInstance.Name {
-				Clients = append(Clients[:i], Clients[i+1:]...)
-				break
-			}
-		}
-		ClientsMutex.Unlock()
-
-		// Send leave message
-		leaveMsg := Message{
-			Timestamp: time.Now(),
-			Sender:    &Client{Name: "SERVER"},
-			Content:   fmt.Sprintf("%s has left the chat.\n", clientInstance.Name),
-		}
-		broadcastMessage(leaveMsg)
-	}
-
 	return gocui.ErrQuit
 }
+
+
+// Yo this for getting users from a room
+func getRoomMembers(room *Room) []*Client {
+	var members []*Client
+	for i := range Clients {
+		if Clients[i].Room == room {
+			members = append(members, &Clients[i])
+		}
+	}
+	return members
+}
+
+// this is for keybinging 
+func kickMock(g *gocui.Gui, v *gocui.View) error {
+	if selectedRoomIndex >= len(Rooms) {
+		return nil
+	}
+	room := Rooms[selectedRoomIndex]
+	members := getRoomMembers(room)
+
+	if selectedUserIndex >= len(members) {
+		return nil
+	}
+
+	kickSelectedUser(*members[selectedUserIndex])
+
+	return nil
+}
+
+

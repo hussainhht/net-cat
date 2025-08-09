@@ -103,7 +103,7 @@ func setKeybindings(g *gocui.Gui) error {
 	g.SetKeybinding("", gocui.KeyArrowRight, gocui.ModNone, nextUser)
 
 	// Kick selected user
-	//g.SetKeybinding("", gocui.KeyCtrlD, gocui.ModNone, kickSelectedUser)
+	g.SetKeybinding("", gocui.KeyCtrlD, gocui.ModNone, here put the function)
 
 	// Quit
 	g.SetKeybinding("", gocui.KeyCtrlC, gocui.ModNone, quit)

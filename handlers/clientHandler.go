@@ -187,6 +187,17 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 }
 
 func kickSelectedUser(client Client) {
+	client.Room.RemoveMember(client)
+
+	for i, c := range Clients {
+		if c.Name == client.Name {
+			Clients = append(Clients[:i], Clients[i+1:]...)
+			break
+		}
+	}
+
 	client.Connection.Close()
+
 	fmt.Printf("Kicked user: %s\n", client.Name)
 }
+

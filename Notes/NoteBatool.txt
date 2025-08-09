@@ -13,3 +13,16 @@ func Listen(network, address string) (net.Listener, error)
 
 -------------------------------------------------------------------------------------------------
 
+So in my project there's directories 
+
+handlers/
+guihandler.go <= not done yet
+clienthandler.go
+handlecommand.go
+models.go
+serverhandler.go
+
+go mod
+go sum
+main.go
+
