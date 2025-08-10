@@ -89,7 +89,6 @@ func layout(g *gocui.Gui) error {
 		fmt.Fprintf(v, "%s%s\n", prefix, room.Name)
 	}
 
-
 	// Users view
 	v, err = g.SetView("users", maxX/3, 0, maxX*2/3-1, maxY-3)
 	if err != nil && err != gocui.ErrUnknownView {
@@ -112,7 +111,6 @@ func layout(g *gocui.Gui) error {
 			fmt.Fprintf(v, "%s%s\n", prefix, member.Name)
 		}
 	}
-
 
 	// log view
 	if v, err = g.SetView("log", maxX*2/3, 0, maxX-1, maxY-1); err != nil {
@@ -164,7 +162,7 @@ func prevRoom(g *gocui.Gui, v *gocui.View) error {
 		selectedUserIndex = 0
 	}
 	g.Update(layout)
-	
+
 	return nil
 }
 
@@ -185,18 +183,16 @@ func prevUser(g *gocui.Gui, v *gocui.View) error {
 	if selectedUserIndex > 0 {
 		selectedUserIndex--
 	} else {
-		selectedUserIndex = len(members)-1 // Stay at the first user
+		selectedUserIndex = len(members) - 1 // Stay at the first user
 	}
 	g.Update(layout)
 	return nil
 }
 
 func nextUser(g *gocui.Gui, v *gocui.View) error {
-	if selectedRoomIndex < len(Rooms) {
-		members := getRoomMembers(Rooms[selectedRoomIndex])
-		if selectedUserIndex < len(members)-1 {
-			selectedUserIndex++
-		}
+	members := getRoomMembers(Rooms[selectedRoomIndex])
+	if selectedUserIndex < len(members)-1 {
+		selectedUserIndex++
 	} else {
 		selectedUserIndex = 0 // Loop back to the first user
 	}
@@ -232,17 +228,17 @@ func kickMock(g *gocui.Gui, v *gocui.View) error {
 	}
 
 	kickSelectedUser(*members[selectedUserIndex])
-	logMsg(g, fmt.Sprintf("Kicked user: %s from room: %s", members[selectedUserIndex].Name, room.Name))	
+	logMsg(g, fmt.Sprintf("Kicked user: %s from room: %s", members[selectedUserIndex].Name, room.Name))
 	return nil
 }
 
-func logMsg(g *gocui.Gui,message string) {
+func logMsg(g *gocui.Gui, message string) {
 	view, err := g.View("log")
 	if err != nil {
 		log.Println("Error getting log view:", err)
 		return
 	}
 	fmt.Fprintln(view, message)
-	view.Autoscroll = true 
+	view.Autoscroll = true
 	// fmt.Printf("Kicked user: %s\n", client.Name)
 }
