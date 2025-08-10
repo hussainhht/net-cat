@@ -36,7 +36,6 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		return usernameError
 	}
 
-
 	requestedRoomName, roomError := PromptForRoom(reader, conn)
 	if roomError != nil {
 		fmt.Println(roomError)
@@ -77,9 +76,15 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		fmt.Fprint(conn, "\r") // clear line
 		fmt.Fprint(conn, msg)
 		msgContent, msgError := reader.ReadString('\n')
+
+
+		if msgContent == "\n" {
+			continue // skip empty messages
+			
+		}
 		if msgError != nil {
 			client.Room.RemoveMember(*client)
-			
+
 			ClientsMutex.Lock()
 			for i, c := range Clients {
 				if c.Name == client.Name {
@@ -106,12 +111,19 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		}
 		fmt.Fprint(conn, "\033[1A")
 		fmt.Fprint(conn, "\033[2K")
+
 		msg = Message{
 			Timestamp: time.Now(),
 			Sender:    client,
 			Content:   msgContent,
 		}
-		client.Room.BroadcastMessage(msg)
+		if msg.Content != "" {
+			client.Room.BroadcastMessage(msg)
+			
+		}else {
+			fmt.Fprint(conn, "Message cannot be empty.\n")
+			continue
+		}
 		clientsMutex.Lock()
 		client.LastActive = time.Now()
 		clientsMutex.Unlock()
@@ -196,7 +208,6 @@ func kickSelectedUser(client Client) {
 			break
 		}
 	}
-	
+
 	client.Connection.Close()
 }
-
