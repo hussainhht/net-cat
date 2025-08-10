@@ -77,10 +77,9 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		fmt.Fprint(conn, msg)
 		msgContent, msgError := reader.ReadString('\n')
 
-
 		if msgContent == "\n" {
 			continue // skip empty messages
-			
+
 		}
 		if msgError != nil {
 			client.Room.RemoveMember(*client)
@@ -119,8 +118,8 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		}
 		if msg.Content != "" {
 			client.Room.BroadcastMessage(msg)
-			
-		}else {
+
+		} else {
 			fmt.Fprint(conn, "Message cannot be empty.\n")
 			continue
 		}
@@ -134,6 +133,9 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 	conn.Write([]byte(ConnectionMessage))
 	conn.Write([]byte("[ENTER YOUR NAME]:"))
 	username, err := reader.ReadString('\n')
+	if username == "" || username == "\n" || username == "\r\n" {
+		username = "Anonymous" // Default username if none specified
+	}
 	if err != nil {
 		fmt.Println("couldnt read name")
 		return "", err
@@ -174,14 +176,20 @@ func DisplayRoomHistory(client *Client) error {
 
 func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error) {
 	// First, check if username is taken and add client
+	countname := 0
 	ClientsMutex.Lock()
 	defer ClientsMutex.Unlock()
+	temp := username
 	for _, client := range Clients {
 		if client.Name == username {
+			countname++
+			
 			// ClientsMutex.Unlock() defer is used to ensure the mutex is released
-			fmt.Fprint(conn, "Username is already taken. Please choose a different name.\n")
-			conn.Close()
-			return nil, fmt.Errorf("name is already taken")
+
+			username = fmt.Sprintf("%s_%d", temp, countname) // Append a number to the username
+			// fmt.Fprint(conn, "Username is already taken. Please choose a different name.\n")
+			// conn.Close()
+			// return nil, fmt.Errorf("name is already taken")
 		}
 	}
 
