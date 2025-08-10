@@ -73,7 +73,7 @@ func layout(g *gocui.Gui) error {
 		maxY = 10
 	}
 	// Rooms view
-	v, err := g.SetView("rooms", 0, 0, maxX/3-1, maxY-15)
+	v, err := g.SetView("rooms", 0, 0, maxX/3-1, maxY-3)
 	if err != nil && err != gocui.ErrUnknownView {
 		return err
 	}
@@ -90,18 +90,8 @@ func layout(g *gocui.Gui) error {
 	}
 
 
-	// Room Stats view (below Rooms)
-	if v, err = g.SetView("roomstats", 0, maxY-10, maxX/3-1, maxY-4); err != nil && err != gocui.ErrUnknownView {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Title = "Room Stats"
-		v.Wrap = true
-		v.Clear()
-	}
-
 	// Users view
-	v, err = g.SetView("users", maxX/3, 0, maxX*2/3-1, maxY-15)
+	v, err = g.SetView("users", maxX/3, 0, maxX*2/3-1, maxY-3)
 	if err != nil && err != gocui.ErrUnknownView {
 		return err
 
@@ -123,16 +113,6 @@ func layout(g *gocui.Gui) error {
 		}
 	}
 
-	// User Stats view (below User)
-	if v, err = g.SetView("userstats", maxX/3, maxY-10, maxX*2/3-1, maxY-4); err != nil && err != gocui.ErrUnknownView {
-		if err != gocui.ErrUnknownView {
-			return err
-		}
-		v.Title = "User Stats"
-		v.Wrap = true
-		v.Frame = true
-		v.Clear()
-	}
 
 	// log view
 	if v, err = g.SetView("log", maxX*2/3, 0, maxX-1, maxY-1); err != nil {
