@@ -36,6 +36,7 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		return usernameError
 	}
 
+
 	requestedRoomName, roomError := PromptForRoom(reader, conn)
 	if roomError != nil {
 		fmt.Println(roomError)
@@ -78,7 +79,7 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		msgContent, msgError := reader.ReadString('\n')
 		if msgError != nil {
 			client.Room.RemoveMember(*client)
-
+			
 			ClientsMutex.Lock()
 			for i, c := range Clients {
 				if c.Name == client.Name {
@@ -195,7 +196,7 @@ func kickSelectedUser(client Client) {
 			break
 		}
 	}
-
+	
 	client.Connection.Close()
 }
 

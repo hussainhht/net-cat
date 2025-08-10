@@ -14,12 +14,11 @@ type Client struct {
 }
 
 type Room struct {
-	Name    string
-	Members []*Client
-	History []*Message
+	Name        string
+	Members     []*Client
+	History     []*Message
 	TimeCreated time.Time
 }
-
 
 type Message struct {
 	Timestamp time.Time
@@ -74,4 +73,10 @@ func (room *Room) BroadcastMessage(message Message) {
 			Content:   "",
 		})
 	}
+}
+
+func (c *Client) Send(s string) error {
+	// msg :=
+	_, err := fmt.Fprint(c.Connection, s)
+	return err
 }

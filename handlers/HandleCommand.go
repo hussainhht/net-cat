@@ -122,10 +122,4 @@ func cmdExit(c *Client) error {
 	return ErrClientExit
 }
 
-func (c *Client) Send(s string) error {
-	// msg :=
-	_, err := fmt.Fprint(c.Connection, s)
 
-	return err
-
-}
