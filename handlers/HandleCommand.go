@@ -47,7 +47,6 @@ func cmdHelp(c *Client) error {
 Commands:
 /help                 Show this help
 /who | /list          Show members in this room
-/room                 Show your current room
 /exit                 Leave the chat
 `
 	return c.Send(help + "\n")
@@ -73,32 +72,32 @@ func cmdWho(c *Client) error {
 	return nil
 }
 
-func cmdRename(c *Client, args []string) error {
-	if len(args) < 1 {
-		return fmt.Errorf("usage: /rename <newName>")
-	}
-	newName := args[0]
+// func cmdRename(c *Client, args []string) error {
+// 	if len(args) < 1 {
+// 		return fmt.Errorf("usage: /rename <newName>")
+// 	}
+// 	newName := args[0]
 
-	ClientsMutex.Lock()
-	defer ClientsMutex.Unlock()
+// 	ClientsMutex.Lock()
+// 	defer ClientsMutex.Unlock()
 
-	if c.Name == newName {
-		return c.Send("you already have that name")
-	}
-	for _, client := range Clients {
-		if client.Name == newName {
-			return c.Send(fmt.Sprintf("username '%s' is already taken", newName))
+// 	if c.Name == newName {
+// 		return c.Send("you already have that name")
+// 	}
+// 	for _, client := range Clients {
+// 		if client.Name == newName {
+// 			return c.Send(fmt.Sprintf("username '%s' is already taken", newName))
 
-		}
+// 		}
 
-	}
-	old := c.Name
+// 	}
+// 	old := c.Name
 
-	c.Name = ""
+// 	c.Name = ""
 
-	c.Name = newName
-	return c.Send(fmt.Sprintf("Your name has been changed to %s\n and your old name was %s\n", newName, old))
-}
+// 	c.Name = newName
+// 	return c.Send(fmt.Sprintf("Your name has been changed to %s\n and your old name was %s\n", newName, old))
+// }
 
 func cmdExit(c *Client) error {
 	if c.Room != nil {
