@@ -147,6 +147,9 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 func PromptForRoom(reader *bufio.Reader, conn net.Conn) (string, error) {
 	conn.Write([]byte("Enter Room:"))
 	room, err := reader.ReadString('\n')
+	if room == "" || room == "\n" || room == "\r\n" {
+		room = "default" // Default room if none specified
+	}
 	if err != nil {
 		fmt.Println("couldnt read room")
 		return "", err

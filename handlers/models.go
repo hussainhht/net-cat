@@ -60,6 +60,10 @@ func (room *Room) RemoveMember(client Client) {
 }
 
 func (room *Room) BroadcastMessage(message Message) {
+
+	if room == nil {
+		return // No room to broadcast to
+	}
 	RoomsMutex.Lock()
 	defer RoomsMutex.Unlock()
 	room.History = append(room.History, &message)
