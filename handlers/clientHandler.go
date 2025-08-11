@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// ASCII welcome banner shown to every new connection
 var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
 	"         _nnnn_\n" +
 	"        dGGGGMMb\n" +
@@ -27,61 +28,68 @@ var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
 	"\\____   )MMMMMP|   .'\n" +
 	"     `-'       `--'\n\n"
 
+// HandleClientConnection owns a single client connection lifecycle:
+// 1) ask for username + room
+// 2) register the client
+// 3) stream messages until disconnect
 func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync.Mutex) error {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
+
+	// --- 1) Prompt for username (Anonymous if empty) ---
 	username, usernameError := PromptForUsername(reader, conn)
 	if usernameError != nil {
 		fmt.Println(usernameError)
 		return usernameError
 	}
 
+	// --- 2) Prompt for room (default if empty) ---
 	requestedRoomName, roomError := PromptForRoom(reader, conn)
 	if roomError != nil {
 		fmt.Println(roomError)
 		return roomError
 	}
+
+	// --- 3) Check if room exists, else create it ---
 	var requestedRoom *Room
-
-	// check if room already exists
-
 	for i := range Rooms {
 		if Rooms[i].Name == requestedRoomName {
-			// room exists - connect client to room
-			requestedRoom = Rooms[i] // Get pointer to the actual room in slice
+			requestedRoom = Rooms[i]
 			break
 		}
 	}
-	// room doesnt already exists
 	if requestedRoom == nil {
 		requestedRoom = CreateRoom(requestedRoomName)
-		// fmt.Println("Creating new room")
 	}
+
+	// --- 4) Register client (duplicate-name policy handled inside) ---
 	client, registerError := RegisterClient(username, conn, requestedRoom)
 	if registerError != nil {
 		fmt.Println(registerError)
 		return registerError
 	}
-	// fmt.Println("Connection Established from username: " + username)
-	// fmt.Printf("Room '%s' now has %d members: %v\n", requestedRoom.Name, len(requestedRoom.Members), requestedRoom.Members)
 
-	// fmt.Println(Rooms)
+	// --- 5) Send room history to the newcomer so they catch up ---
 	DisplayRoomHistory(client)
+
+	// --- 6) Main read/broadcast loop ---
 	for {
+		// Pre-print the prompt line with timestamp/name (UI polish)
 		msg := Message{
 			Timestamp: time.Now(),
 			Sender:    client,
 			Content:   "",
 		}
-		fmt.Fprint(conn, "\r") // clear line
+		// Clear current terminal line and print the prefix
+		fmt.Fprint(conn, "\r")
 		fmt.Fprint(conn, msg)
+
+		// Read one line from client
 		msgContent, msgError := reader.ReadString('\n')
 
-		if msgContent == "\n" {
-			continue // skip empty messages
-
-		}
 		if msgError != nil {
+
+			// --- Client disconnected or network error: clean up ---
 			client.Room.RemoveMember(*client)
 
 			ClientsMutex.Lock()
@@ -91,103 +99,133 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 					break
 				}
 			}
-
 			ClientsMutex.Unlock()
+
+			// Inform the room that this client left
 			leaveMsg := Message{
 				Timestamp: time.Now(),
-				Sender:    &Client{Name: "SERVER"}, // virtual sender
+				Sender:    &Client{Name: "SERVER"}, // virtual/system sender
 				Content:   fmt.Sprintf("%s has left the chat.\n", client.Name),
 			}
 			client.Room.BroadcastMessage(leaveMsg)
 			return msgError
 		}
 
+		// Ignore whitespace-only messages (safer than checking just "\n")
+		if strings.TrimSpace(msgContent) == "" {
+			continue
+		}
+
+		// --- Commands (e.g., /exit, /rename, etc.) ---
 		if consumed, err := HandleCommand(msgContent, client); consumed {
 			if err != nil {
 				fmt.Println("Error handling command:", err)
 			}
 			continue
 		}
+
+		// Wipe the "prompt" line we printed above
 		fmt.Fprint(conn, "\033[1A")
 		fmt.Fprint(conn, "\033[2K")
 
+		// Broadcast the actual message
 		msg = Message{
 			Timestamp: time.Now(),
 			Sender:    client,
 			Content:   msgContent,
 		}
-		if msg.Content != "" {
-			client.Room.BroadcastMessage(msg)
+		client.Room.BroadcastMessage(msg)
 
-		} else {
-			fmt.Fprint(conn, "Message cannot be empty.\n")
-			continue
-		}
+		// Update last activity
 		clientsMutex.Lock()
 		client.LastActive = time.Now()
 		clientsMutex.Unlock()
 	}
 }
 
+// PromptForUsername asks the user for a name.
+// If empty or only whitespace, it assigns "Anonymous".
 func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 	conn.Write([]byte(ConnectionMessage))
 	conn.Write([]byte("[ENTER YOUR NAME]:"))
+
 	username, err := reader.ReadString('\n')
-	if username == "" || username == "\n" || username == "\r\n" {
-		username = "Anonymous" // Default username if none specified
-	}
 	if err != nil {
 		fmt.Println("couldnt read name")
 		return "", err
 	}
+
+	// Normalize whitespace first, then decide
 	username = strings.TrimSpace(username)
+	if username == "" {
+		username = "Anonymous" // Default username if none specified
+	}
+
+	// if the naem >15 porgram take onle first 15 rone
+	if len(username) > 15 {
+		username = username[:15]
+	}
+
+	// Clean the prompt line in user's terminal
 	fmt.Fprint(conn, "\033[1A")
 	fmt.Fprint(conn, "\033[2K")
 	return username, nil
 }
 
+// PromptForRoom asks the user for a room name.
+// If empty, it assigns "default".
 func PromptForRoom(reader *bufio.Reader, conn net.Conn) (string, error) {
 	conn.Write([]byte("Enter Room:"))
+
 	room, err := reader.ReadString('\n')
-	if room == "" || room == "\n" || room == "\r\n" {
-		room = "default" // Default room if none specified
-	}
 	if err != nil {
 		fmt.Println("couldnt read room")
 		return "", err
 	}
+
+	// Normalize whitespace then fallback
 	room = strings.TrimSpace(room)
+	if room == "" {
+		room = "default"
+	}
+
+	// Clean the prompt line in user's terminal
 	fmt.Fprint(conn, "\033[1A")
 	fmt.Fprint(conn, "\033[2K")
 	return room, nil
 }
 
+// DisplayRoomHistory sends all previous messages in the room to the client.
 func DisplayRoomHistory(client *Client) error {
 	room := client.Room
 	if room == nil {
 		return fmt.Errorf("client is not in a room")
 	}
-
 	for _, msg := range room.History {
 		fmt.Fprint(client.Connection, msg.String())
 	}
 	return nil
 }
 
+// RegisterClient adds a new client to global list + room,
+// and applies duplicate-name policy:
+// - If name is "Anonymous": allow multiples by appending a numeric suffix.
+// - If name is custom and already taken: reject and close connection.
 func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error) {
-	// First, check if username is taken and add client
 	countname := 0
+
 	ClientsMutex.Lock()
 	defer ClientsMutex.Unlock()
-	temp := username
+
+	orig := username
 	for _, client := range Clients {
 		if client.Name == username {
 			countname++
-			
-			// ClientsMutex.Unlock() defer is used to ensure the mutex is released
-			if temp == "Anonymous" {
-				username = fmt.Sprintf("%s_%d", temp, countname) // Append a number to the username
-			}else {
+			if orig == "Anonymous" {
+				// For Anonymous users: Anonymous_1, Anonymous_2, ...
+				username = fmt.Sprintf("%s_%d", orig, countname)
+			} else {
+				// Custom duplicate: reject
 				fmt.Fprint(conn, "Username is already taken. Please choose a different name.\n")
 				conn.Close()
 				return nil, fmt.Errorf("name is already taken")
@@ -200,19 +238,27 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 		Connection: conn,
 		Room:       room,
 	}
+
+	// Add to global list
 	Clients = append(Clients, newClient)
 
+	// Inform the room that this client joined
 	joinMsg := Message{
 		Timestamp: time.Now(),
-		Sender:    &Client{Name: "SERVER"}, // virtual sender
+		Sender:    &Client{Name: "SERVER"}, // virtual/system sender
 		Content:   fmt.Sprintf("%s has joined the chat.\n", newClient.Name),
 	}
 	newClient.Room.BroadcastMessage(joinMsg)
+
+	// Add to room members
 	room.AddMember(newClient)
+
 	return &newClient, nil
 }
 
+// kickSelectedUser removes client from room and global list, closes the connection.
 func kickSelectedUser(client Client) {
+
 	client.Room.RemoveMember(client)
 
 	for i, c := range Clients {
@@ -221,6 +267,5 @@ func kickSelectedUser(client Client) {
 			break
 		}
 	}
-
 	client.Connection.Close()
 }
