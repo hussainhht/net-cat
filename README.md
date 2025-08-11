@@ -98,9 +98,3 @@ for {
   broadcast(fmt.Sprintf("[%s][%s]: %s", time.Now().Format(tsFmt), client.Name, line))
 }
 ```
-
-## License
-Educational / personal project. Add a license if you plan to share publicly.
-
----
-Feel free to ask for refactors or implementation of the TODO items.
