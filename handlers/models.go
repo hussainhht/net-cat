@@ -6,26 +6,30 @@ import (
 	"time"
 )
 
+// * Represents a connected user
 type Client struct {
-	Name       string
-	Connection net.Conn
-	Room       *Room
-	LastActive time.Time
+	Name       string    // Client's display name
+	Connection net.Conn  // TCP connection to this client
+	Room       *Room     // Current room the client is in
+	LastActive time.Time // Last time client sent/received activity
 }
 
+// * Represents a chat room
 type Room struct {
-	Name        string
-	Members     []*Client
-	History     []*Message
-	TimeCreated time.Time
+	Name        string     // Room name
+	Members     []*Client  // List of members
+	History     []*Message // Stored messages for history sync
+	TimeCreated time.Time  // When the room was created
 }
 
+// * Represents a single chat message
 type Message struct {
-	Timestamp time.Time
-	Sender    *Client
-	Content   string
+	Timestamp time.Time // Time the message was sent
+	Sender    *Client   // Who sent the message
+	Content   string    // The message text
 }
 
+// * Formats a message into the required string format
 func (msg Message) String() string {
 	return fmt.Sprintf("[%s][%s]:%s",
 		msg.Timestamp.Format("2006-01-02 15:04:05"),
@@ -33,21 +37,27 @@ func (msg Message) String() string {
 		msg.Content)
 }
 
+// * Resets room to an empty state
 func (room *Room) NewRoom() {
 	room.Name = ""
 	room.Members = nil
 	room.History = nil
 }
+
+// * Sets the room's name
 func (room *Room) SetName(name string) {
 	room.Name = name
 }
 
+// * Adds a member to the room (thread-safe)
 func (room *Room) AddMember(client Client) {
 	RoomsMutex.Lock()
 	defer RoomsMutex.Unlock()
 	room.Members = append(room.Members, &client)
 }
 
+// * Removes a member from the room by matching name (thread-safe)
+// ! Passing Client by value can cause pointer mismatch issues
 func (room *Room) RemoveMember(client Client) {
 	RoomsMutex.Lock()
 	defer RoomsMutex.Unlock()
@@ -59,17 +69,21 @@ func (room *Room) RemoveMember(client Client) {
 	}
 }
 
+// * Broadcasts a message to all members of the room (thread-safe)
+// ? History is stored for new clients when they join
 func (room *Room) BroadcastMessage(message Message) {
-
 	if room == nil {
-		return // No room to broadcast to
+		return // ! Avoid nil pointer if room is missing
 	}
 	RoomsMutex.Lock()
 	defer RoomsMutex.Unlock()
+
+	// Store message in history
 	room.History = append(room.History, &message)
 
+	// Send to all members
 	for _, member := range room.Members {
-		fmt.Fprint(member.Connection, "\r") // clear line
+		fmt.Fprint(member.Connection, "\r") // Clear current line in terminal
 		fmt.Fprint(member.Connection, message.String())
 		fmt.Fprint(member.Connection, Message{
 			Timestamp: time.Now(),
@@ -79,8 +93,8 @@ func (room *Room) BroadcastMessage(message Message) {
 	}
 }
 
+// * Sends a raw string directly to the client connection
 func (c *Client) Send(s string) error {
-	// msg :=
 	_, err := fmt.Fprint(c.Connection, s)
 	return err
 }
