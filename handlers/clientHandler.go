@@ -185,11 +185,13 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 			countname++
 			
 			// ClientsMutex.Unlock() defer is used to ensure the mutex is released
-
-			username = fmt.Sprintf("%s_%d", temp, countname) // Append a number to the username
-			// fmt.Fprint(conn, "Username is already taken. Please choose a different name.\n")
-			// conn.Close()
-			// return nil, fmt.Errorf("name is already taken")
+			if temp == "Anonymous" {
+				username = fmt.Sprintf("%s_%d", temp, countname) // Append a number to the username
+			}else {
+				fmt.Fprint(conn, "Username is already taken. Please choose a different name.\n")
+				conn.Close()
+				return nil, fmt.Errorf("name is already taken")
+			}
 		}
 	}
 
