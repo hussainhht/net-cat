@@ -21,17 +21,14 @@ func HandleCommand(line string, client *Client) (bool, error) {
 	if !strings.HasPrefix(cmd, "/") {
 		return false, nil
 	}
-	// args := pats[1:]
+
+	
 
 	switch cmd {
 	case "/help":
 		return true, cmdHelp(client)
 	case "/who", "/list":
 		return true, cmdWho(client)
-	// case "/room":
-	// 	return true, cmdRoom(client)
-	// case "/rename":
-	// 	return true, cmdRename(client, args)
 	case "/exit", "/quit":
 		return true, cmdExit(client)
 	default:
@@ -72,29 +69,24 @@ func cmdWho(c *Client) error {
 	return nil
 }
 
+// ! not used
 // func cmdRename(c *Client, args []string) error {
 // 	if len(args) < 1 {
 // 		return fmt.Errorf("usage: /rename <newName>")
 // 	}
 // 	newName := args[0]
-
 // 	ClientsMutex.Lock()
 // 	defer ClientsMutex.Unlock()
-
 // 	if c.Name == newName {
 // 		return c.Send("you already have that name")
 // 	}
 // 	for _, client := range Clients {
 // 		if client.Name == newName {
 // 			return c.Send(fmt.Sprintf("username '%s' is already taken", newName))
-
 // 		}
-
 // 	}
 // 	old := c.Name
-
 // 	c.Name = ""
-
 // 	c.Name = newName
 // 	return c.Send(fmt.Sprintf("Your name has been changed to %s\n and your old name was %s\n", newName, old))
 // }
@@ -120,5 +112,3 @@ func cmdExit(c *Client) error {
 	c.Connection.Close()
 	return ErrClientExit
 }
-
-

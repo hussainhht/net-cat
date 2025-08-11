@@ -4,9 +4,6 @@ import (
 	"fmt"
 	"log"
 	"time"
-
-	// "math"
-
 	"github.com/jroimartin/gocui"
 )
 
@@ -116,7 +113,7 @@ func layout(g *gocui.Gui) error {
 	}
 
 	// ! Keep indices in-range before drawing
-	clampSelection()
+	 clampSelection()
 
 	// ---------------- Rooms view ----------------
 	v, err := g.SetView("rooms", 0, 0, maxX/3-1, maxY-3)
