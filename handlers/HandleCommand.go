@@ -107,8 +107,8 @@ func cmdExit(c *Client) error {
 			Sender:    &Client{Name: "SERVER"}, // ? Consider using a singleton
 			Content:   fmt.Sprintf("%s has left the chat.\n", c.Name),
 		}
+		c.Room.RemoveMember(*c) // ! Should take *Client, not value
 		c.Room.BroadcastMessage(leaveMsg) // ! Ensure thread-safety inside
-		c.Room.RemoveMember(*c)           // ! Should take *Client, not value
 	}
 
 	// ! Removing from Clients without lock can cause race
@@ -120,5 +120,5 @@ func cmdExit(c *Client) error {
 	}
 
 	_ = c.Connection.Close() // * Ignore error on close
-	return ErrClientExit      // * Signal clean exit to the main loop
+	return ErrClientExit     // * Signal clean exit to the main loop
 }
