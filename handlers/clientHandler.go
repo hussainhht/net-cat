@@ -161,14 +161,14 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 		username = "Anonymous" // Default username if none specified
 	}
 
-	// if the naem >15 porgram take onle first 15 rone
+	// if the name >15 program take only first 15 chars
 	if len(username) > 15 {
 		username = username[:15]
 	}
 
 	// Clean the prompt line in user's terminal
-	fmt.Fprint(conn, "\033[1A")
-	fmt.Fprint(conn, "\033[2K")
+	fmt.Fprint(conn, "\033[1A") // Move cursor up one line
+	fmt.Fprint(conn, "\033[2K")	// Clear the line
 	return username, nil
 }
 

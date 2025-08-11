@@ -85,7 +85,7 @@ func CreateRoom(roomName string) *Room {
 		History: make([]*Message, 0),
 	}
 	Rooms = append(Rooms, &newRoom)
-	newRoom.TimeCreated = time.Now() // * Track creation time
+	// newRoom.TimeCreated = time.Now() // * Track creation time
 	return &newRoom                  // ? Returns pointer to value stored in slice (OK as long as not reallocated frequently)
 }
 
