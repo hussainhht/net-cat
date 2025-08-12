@@ -34,6 +34,13 @@ var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
 // 3) stream messages until disconnect
 func HandleClientConnection(conn net.Conn) error { // rely on globals for safety/consistency
 	defer conn.Close()
+
+	if len(Clients) >= maxClients {
+		fmt.Fprintln(conn, "Server is full. Maximum 10 clients allowed.")
+		conn.Close()
+		return nil
+	}
+
 	reader := bufio.NewReader(conn)
 
 	// --- 1) Prompt for username (Anonymous if empty) ---
