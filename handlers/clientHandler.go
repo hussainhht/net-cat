@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"net"
 	"strings"
-	"sync"
 	"time"
 )
 
 // ASCII welcome banner shown to every new connection
+
 var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
 	"         _nnnn_\n" +
 	"        dGGGGMMb\n" +
@@ -32,7 +32,7 @@ var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
 // 1) ask for username + room
 // 2) register the client
 // 3) stream messages until disconnect
-func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync.Mutex) error {
+func HandleClientConnection(conn net.Conn) error { // rely on globals for safety/consistency
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
 
@@ -52,25 +52,27 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 
 	// --- 3) Check if room exists, else create it ---
 	var requestedRoom *Room
+	RoomsMutex.Lock() // /? blow: protect Rooms access
 	for i := range Rooms {
 		if Rooms[i].Name == requestedRoomName {
 			requestedRoom = Rooms[i]
 			break
 		}
 	}
+	RoomsMutex.Unlock() // /? blow
 	if requestedRoom == nil {
 		requestedRoom = CreateRoom(requestedRoomName)
 	}
 
 	// --- 4) Register client (duplicate-name policy handled inside) ---
-	client, registerError := RegisterClient(username, conn, requestedRoom)
+	client, registerError := RegisterClient(username, conn, requestedRoom) // /? blow: RegisterClient now enforces max under the same mutex and returns slice-backed pointer
 	if registerError != nil {
 		fmt.Println(registerError)
 		return registerError
 	}
 
 	// --- 5) Send room history to the newcomer so they catch up ---
-	DisplayRoomHistory(client)
+	_ = DisplayRoomHistory(client)
 
 	// --- 6) Main read/broadcast loop ---
 	for {
@@ -88,13 +90,12 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		msgContent, msgError := reader.ReadString('\n')
 
 		if msgError != nil {
-
 			// --- Client disconnected or network error: clean up ---
-			client.Room.RemoveMember(*client)
+			client.Room.RemoveMember(client)
 
 			ClientsMutex.Lock()
 			for i, c := range Clients {
-				if c.Name == client.Name {
+				if c == client || (c.Name == client.Name && c.Connection == client.Connection) {
 					Clients = append(Clients[:i], Clients[i+1:]...)
 					break
 				}
@@ -137,9 +138,9 @@ func HandleClientConnection(conn net.Conn, clients *[]Client, clientsMutex *sync
 		client.Room.BroadcastMessage(msg)
 
 		// Update last activity
-		clientsMutex.Lock()
+		ClientsMutex.Lock()
 		client.LastActive = time.Now()
-		clientsMutex.Unlock()
+		ClientsMutex.Unlock()
 	}
 }
 
@@ -155,8 +156,25 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 		return "", err
 	}
 
-	// Normalize whitespace first, then decide
 	username = strings.TrimSpace(username)
+
+	// /? blow: validate allowed chars (A-Z a-z 0-9 _ -)
+	if username != "" {
+		valid := true
+		for _, r := range username {
+			if (r >= 'A' && r <= 'Z') || (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
+				continue
+			}
+			valid = false
+			break
+		}
+		if !valid {
+			fmt.Fprint(conn, "Invalid username. Please use letters, numbers, underscores or dashes.\n")
+			return "", fmt.Errorf("invalid username") // /? blow: do not call kick here; the caller will close
+		}
+	}
+
+	// Normalize whitespace first, then decide
 	if username == "" {
 		username = "Anonymous" // Default username if none specified
 	}
@@ -168,7 +186,7 @@ func PromptForUsername(reader *bufio.Reader, conn net.Conn) (string, error) {
 
 	// Clean the prompt line in user's terminal
 	fmt.Fprint(conn, "\033[1A") // Move cursor up one line
-	fmt.Fprint(conn, "\033[2K")	// Clear the line
+	fmt.Fprint(conn, "\033[2K") // Clear the line
 	return username, nil
 }
 
@@ -212,12 +230,18 @@ func DisplayRoomHistory(client *Client) error {
 // - If name is "Anonymous": allow multiples by appending a numeric suffix.
 // - If name is custom and already taken: reject and close connection.
 func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error) {
-	countname := 0
-
 	ClientsMutex.Lock()
 	defer ClientsMutex.Unlock()
 
+	// enforce max clients using the current length under lock
+	if len(Clients) >= maxClients {
+		fmt.Fprintln(conn, "Server is full. Maximum 10 clients allowed.")
+		conn.Close()
+		return nil, fmt.Errorf("server full")
+	}
+
 	orig := username
+	countname := 0
 	for _, client := range Clients {
 		if client.Name == username {
 			countname++
@@ -233,16 +257,17 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 		}
 	}
 
-	newClient := Client{
+	newClient := &Client{
 		Name:       username,
 		Connection: conn,
 		Room:       room,
+		LastActive: time.Now(), // /? blow
 	}
 
 	// Add to global list
 	Clients = append(Clients, newClient)
 
-	// Inform the room that this client joined
+	// Inform the room that this client joined (do outside the lock ideally; simple for now)
 	joinMsg := Message{
 		Timestamp: time.Now(),
 		Sender:    &Client{Name: "SERVER"}, // virtual/system sender
@@ -253,16 +278,17 @@ func RegisterClient(username string, conn net.Conn, room *Room) (*Client, error)
 	// Add to room members
 	room.AddMember(newClient)
 
-	return &newClient, nil
+	return newClient, nil
 }
 
 // kickSelectedUser removes client from room and global list, closes the connection.
-func kickSelectedUser(client Client) {
-
+func kickSelectedUser(client *Client) {
 	client.Room.RemoveMember(client)
 
+	ClientsMutex.Lock()
+	defer ClientsMutex.Unlock()
 	for i, c := range Clients {
-		if c.Name == client.Name {
+		if c == client || (c.Name == client.Name && c.Connection == client.Connection) {
 			Clients = append(Clients[:i], Clients[i+1:]...)
 			break
 		}

@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net"
+	// "strings"
 	"time"
 )
 
@@ -17,8 +18,8 @@ type Client struct {
 // * Represents a chat room
 type Room struct {
 	Name        string     // Room name
-	Members     []*Client  // List of members
-	History     []*Message // Stored messages for history sync
+	Members     []*Client  // List of members (guarded by RoomsMutex)
+	History     []*Message // Stored messages for history sync (guarded by RoomsMutex)
 	TimeCreated time.Time  // When the room was created
 }
 
@@ -50,19 +51,24 @@ func (room *Room) SetName(name string) {
 }
 
 // * Adds a member to the room (thread-safe)
-func (room *Room) AddMember(client Client) {
+func (room *Room) AddMember(client *Client) {
 	RoomsMutex.Lock()
 	defer RoomsMutex.Unlock()
-	room.Members = append(room.Members, &client)
+	// prevent duplicates
+	for _, m := range room.Members {
+		if m == client {
+			return
+		}
+	}
+	room.Members = append(room.Members, client)
 }
 
 // * Removes a member from the room by matching name (thread-safe)
-// ! Passing Client by value can cause pointer mismatch issues
-func (room *Room) RemoveMember(client Client) {
+func (room *Room) RemoveMember(client *Client) {
 	RoomsMutex.Lock()
 	defer RoomsMutex.Unlock()
 	for i, member := range room.Members {
-		if member.Name == client.Name {
+		if member == client || member.Name == client.Name {
 			room.Members = append(room.Members[:i], room.Members[i+1:]...)
 			break
 		}
@@ -76,10 +82,10 @@ func (room *Room) BroadcastMessage(message Message) {
 		return // ! Avoid nil pointer if room is missing
 	}
 	RoomsMutex.Lock()
-	defer RoomsMutex.Unlock()
-
-	// Store message in history
+	// Store message in history (keep only last N if needed)
 	room.History = append(room.History, &message)
+	// members := append([]*Client(nil), room.Members...) // copy for safe iteration
+	RoomsMutex.Unlock()
 
 	// Send to all members
 	for _, member := range room.Members {

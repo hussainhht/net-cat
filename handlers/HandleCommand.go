@@ -61,21 +61,20 @@ func cmdWho(c *Client) error {
 	// ! Possible race: reading Clients without lock
 	// * Better: read from r.Members under a room mutex
 	var members []string
-	for _, client := range Clients {
-		if client.Room == r {
-			members = append(members, client.Name)
+	RoomsMutex.Lock()
+	for _, m := range r.Members {
+		if m != nil {
+			members = append(members, m.Name)
 		}
 	}
+	RoomsMutex.Unlock()
 	if len(members) == 0 {
 		return c.Send("No members in this room.\n")
 	}
 
 	// ! Sending line-by-line can block
 	// * Better: join and send once
-	for _, member := range members {
-		c.Send(member + "\n") // ! Ignoring send errors hides connection issues
-	}
-	return nil
+	return c.Send(strings.Join(members, "\n") + "\n")
 }
 
 // ! not used (example for rename command with locking)
@@ -107,17 +106,18 @@ func cmdExit(c *Client) error {
 			Sender:    &Client{Name: "SERVER"}, // ? Consider using a singleton
 			Content:   fmt.Sprintf("%s has left the chat.\n", c.Name),
 		}
-		c.Room.RemoveMember(*c) // ! Should take *Client, not value
-		c.Room.BroadcastMessage(leaveMsg) // ! Ensure thread-safety inside
+		c.Room.RemoveMember(c)
+		c.Room.BroadcastMessage(leaveMsg)
 	}
 
-	// ! Removing from Clients without lock can cause race
+	ClientsMutex.Lock()
 	for i, client := range Clients {
-		if client.Name == c.Name {
-			Clients = append(Clients[:i], Clients[i+1:]...) // * Safe slice removal
+		if client == c || (client.Name == c.Name && client.Connection == c.Connection) {
+			Clients = append(Clients[:i], Clients[i+1:]...)
 			break
 		}
 	}
+	ClientsMutex.Unlock()
 
 	_ = c.Connection.Close() // * Ignore error on close
 	return ErrClientExit     // * Signal clean exit to the main loop

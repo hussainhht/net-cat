@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"time"
+
 	"github.com/jroimartin/gocui"
 )
 
@@ -24,9 +25,9 @@ import (
 
 // GUI state (global). In a larger app, you'd likely wrap these inside a struct.
 var (
-	guiInstance       *gocui.Gui    // singleton gocui instance used across the package
-	selectedRoomIndex int           // index into Rooms slice
-	selectedUserIndex int           // index into current room's members
+	guiInstance       *gocui.Gui // singleton gocui instance used across the package
+	selectedRoomIndex int        // index into Rooms slice
+	selectedUserIndex int        // index into current room's members
 )
 
 // RunGUI starts the admin panel. Blocks on g.MainLoop() until quit.
@@ -102,6 +103,8 @@ func clampSelection() {
 // layout defines and updates all views: rooms, users, log, footer.
 // g.SetView creates a view on first call (ErrUnknownView) and returns the same view subsequently.
 func layout(g *gocui.Gui) error {
+
+
 	maxX, maxY := g.Size()
 
 	// Apply minimal sizes to avoid negative coordinates on tiny terminals.
@@ -113,7 +116,7 @@ func layout(g *gocui.Gui) error {
 	}
 
 	// ! Keep indices in-range before drawing
-	 clampSelection()
+	clampSelection()
 
 	// ---------------- Rooms view ----------------
 	v, err := g.SetView("rooms", 0, 0, maxX/3-1, maxY-3)
@@ -173,7 +176,7 @@ func layout(g *gocui.Gui) error {
 		v.Wrap = true
 		v.Autoscroll = true
 		v.BgColor = gocui.ColorDefault
-		v.FgColor = gocui.ColorBlack // NOTE: may be invisible on dark backgrounds
+		v.FgColor = gocui.ColorRed // NOTE: may be invisible on dark backgrounds
 
 		// Initial placeholder content
 		fmt.Fprintln(v, "Log messages will appear here...")
@@ -282,13 +285,19 @@ func quit(g *gocui.Gui, v *gocui.View) error {
 // getRoomMembers returns a slice of pointers to Clients that belong to the given room.
 // NOTE: This scans the global Clients slice each time; for large lists, consider indexing by room.
 func getRoomMembers(room *Room) []*Client {
+
+	// ! Guard against nil room to avoid panics
+	ClientsMutex.Lock()
+	defer ClientsMutex.Unlock()
+
 	var members []*Client
+
 	if room == nil { // ! Defensive: nil room means no members
 		return members
 	}
-	for i := range Clients {
-		if Clients[i].Room == room {
-			members = append(members, &Clients[i])
+	for _, c := range Clients {
+		if c != nil && c.Room == room {
+			members = append(members, c)
 		}
 	}
 	return members
@@ -309,9 +318,8 @@ func kickMock(g *gocui.Gui, v *gocui.View) error {
 		return nil
 	}
 
-	// ! NOTE: kickSelectedUser signature unknown. If it expects *Client, pass members[selectedUserIndex].
-	// ! If it expects a value, current code will need adjustment where that function is defined.
-	kickSelectedUser(*members[selectedUserIndex])
+	// Kick the selected user
+	kickSelectedUser(members[selectedUserIndex])
 	logMsg(g, fmt.Sprintf("Kicked user: %s from room: %s", members[selectedUserIndex].Name, room.Name))
 	return nil
 }
