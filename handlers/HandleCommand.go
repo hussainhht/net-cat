@@ -31,6 +31,8 @@ func HandleCommand(line string, client *Client) (bool, error) {
 		return true, cmdWho(client)
 	case "/exit", "/quit":
 		return true, cmdExit(client)
+		case "/rename":
+			return true, cmdRename(client, pats[1:])
 	default:
 		// * Return error for unknown commands
 		if strings.HasPrefix(cmd, "/") {
@@ -45,8 +47,10 @@ func cmdHelp(c *Client) error {
 	help := `
 Commands:
 /help                 Show this help
+/rename <newName>     Change your username
 /who | /list          Show members in this room
 /exit                 Leave the chat
+
 `
 	return c.Send(help + "\n") // * Send once instead of multiple writes
 }
@@ -78,25 +82,25 @@ func cmdWho(c *Client) error {
 }
 
 // ! not used (example for rename command with locking)
-// func cmdRename(c *Client, args []string) error {
-// 	if len(args) < 1 {
-// 		return fmt.Errorf("usage: /rename <newName>")
-// 	}
-// 	newName := args[0]
-// 	ClientsMutex.Lock() // * Protect global Clients list
-// 	defer ClientsMutex.Unlock()
-// 	if c.Name == newName {
-// 		return c.Send("you already have that name")
-// 	}
-// 	for _, client := range Clients {
-// 		if client.Name == newName {
-// 			return c.Send(fmt.Sprintf("username '%s' is already taken", newName))
-// 		}
-// 	}
-// 	old := c.Name
-// 	c.Name = newName // * No need to clear before setting
-// 	return c.Send(fmt.Sprintf("Your name has been changed to %s\n and your old name was %s\n", newName, old))
-// }
+func cmdRename(c *Client, args []string) error {
+	if len(args) < 1 {
+		return fmt.Errorf("usage: /rename <newName>")
+	}
+	newName := args[0]
+	ClientsMutex.Lock() // * Protect global Clients list
+	defer ClientsMutex.Unlock()
+	if c.Name == newName {
+		return c.Send("you already have that name\n")
+	}
+	for _, client := range Clients {
+		if client.Name == newName {
+			return c.Send(fmt.Sprintf("username '%s' is already taken\n", newName))
+		}
+	}
+	old := c.Name
+	c.Name = newName // * No need to clear before setting
+	return c.Send(fmt.Sprintf("Your name has been changed to %s\n and your old name was %s\n", newName, old))
+}
 
 // * Handles client exit: announce, remove, close connection
 func cmdExit(c *Client) error {
