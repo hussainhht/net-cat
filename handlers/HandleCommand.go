@@ -36,7 +36,7 @@ func HandleCommand(line string, client *Client) (bool, error) {
 	default:
 		// * Return error for unknown commands
 		if strings.HasPrefix(cmd, "/") {
-			return true, fmt.Errorf("unknown command: %s", cmd)
+			return true, client.Send(fmt.Sprintf("unknown command: %s", cmd))
 		}
 	}
 	return true, nil
