@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"strconv"
 	"sync"
 	"time"
 )
@@ -39,21 +40,30 @@ func RunTCPServer(port string) error {
 		go HandleClientConnection(conn)
 	}
 }
-
 // * Parses CLI args and returns port (default :8989) or prints usage
 func GetPort() string {
 	args := os.Args
+
 	if len(args) > 2 {
 		fmt.Println("[USAGE]: ./TCPChat $port")
 		os.Exit(1)
 	}
-
 	port := defaultPort
 	if len(args) == 2 {
+		portnum, err := strconv.Atoi(args[1])
+		if err != nil {
+			fmt.Println("the port is not a number")
+			os.Exit(1)
+		}
+		if portnum < 1024 || portnum > 65535 {
+			fmt.Println("the port must be between 1024 and 65535")
+			os.Exit(1)
+		}
 		port = ":" + args[1]
 	}
 	return port
 }
+
 
 // * Creates a new room and registers it globally
 func CreateRoom(roomName string) *Room {
