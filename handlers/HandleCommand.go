@@ -99,7 +99,13 @@ func cmdRename(c *Client, args []string) error {
 	}
 	old := c.Name
 	c.Name = newName // * No need to clear before setting
-	return c.Send(fmt.Sprintf("Your name has been changed to %s\n and your old name was %s\n", newName, old))
+	ms := fmt.Sprintf(" %s has been changed to %s and the old name was %s\n", old ,newName, old)
+	c.Room.BroadcastMessage(Message{
+		Timestamp: time.Now(),
+		Sender:    &Client{Name: "SERVER"},
+		Content:   ms,
+	})
+	return nil
 }
 
 // * Handles client exit: announce, remove, close connection
