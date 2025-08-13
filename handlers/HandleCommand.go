@@ -46,7 +46,6 @@ func HandleCommand(line string, client *Client) (bool, error) {
 func cmdHelp(c *Client) error {
 	help := `
 Commands:
-/help                 Show this help
 /rename <newName>     Change your username
 /who | /list          Show members in this room
 /exit                 Leave the chat
