@@ -26,7 +26,8 @@ var ConnectionMessage string = "Welcome to TCP-Chat!\n" +
 	" |    `.       | `' \\Zq\n" +
 	"_)      \\.___.,|     .'\n" +
 	"\\____   )MMMMMP|   .'\n" +
-	"     `-'       `--'\n\n"
+	"     `-'       `--'\n\n"+
+	"/help to see available commands\n"
 
 // HandleClientConnection owns a single client connection lifecycle:
 // 1) ask for username + room
