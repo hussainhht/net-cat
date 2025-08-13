@@ -52,7 +52,7 @@ func RunGUI() error {
 
 	// Enter main event loop; returns ErrQuit when quit is requested
 	if err := g.MainLoop(); err != nil && err != gocui.ErrQuit {
-		log.Panicln(err)
+		return err
 	}
 	return nil
 }
@@ -103,7 +103,6 @@ func clampSelection() {
 // layout defines and updates all views: rooms, users, log, footer.
 // g.SetView creates a view on first call (ErrUnknownView) and returns the same view subsequently.
 func layout(g *gocui.Gui) error {
-
 
 	maxX, maxY := g.Size()
 
