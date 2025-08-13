@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"netcat/handlers"
 	"os"
+	"strconv"
 )
 
 func main() {
 	// * Get port from CLI args or default to 8989
-	port := handlers.GetPort()
+	port := ":" + strconv.Itoa(handlers.GetPort())
 
 	// * Start TCP server in a separate goroutine
 	// ! If RunTCPServer blocks here, GUI will never start

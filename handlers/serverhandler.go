@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-const defaultPort string = ":8989"
+const defaultPort int = 8989
 const maxClients = 10
 
 // Global client registry (guard with ClientsMutex)
@@ -40,30 +40,34 @@ func RunTCPServer(port string) error {
 		go HandleClientConnection(conn)
 	}
 }
+
 // * Parses CLI args and returns port (default :8989) or prints usage
-func GetPort() string {
+func GetPort() int {
 	args := os.Args
 
 	if len(args) > 2 {
 		fmt.Println("[USAGE]: ./TCPChat $port")
 		os.Exit(1)
 	}
-	port := defaultPort
+	var port int = defaultPort // Default port
+	var portnum int
+	var err error
 	if len(args) == 2 {
-		portnum, err := strconv.Atoi(args[1])
+		portnum, err = strconv.Atoi(args[1])
 		if err != nil {
 			fmt.Println("the port is not a number")
 			os.Exit(1)
+		} else {
+			port = portnum
 		}
-		if portnum < 1024 || portnum > 65535 {
-			fmt.Println("the port must be between 1024 and 65535")
-			os.Exit(1)
-		}
-		port = ":" + args[1]
 	}
+	if port < 1024 || port > 65535 {
+		fmt.Println("the port must be between 1024 and 65535")
+		os.Exit(1)
+	} 
+
 	return port
 }
-
 
 // * Creates a new room and registers it globally
 func CreateRoom(roomName string) *Room {
